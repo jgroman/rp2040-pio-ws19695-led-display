@@ -1,0 +1,141 @@
+/*
+Waveshare 19695 Pico-Clock-Green display driver
+
+Pins:
+
+Columns shift registers
+10 CLK             side0
+11 SDI   OUT0 SET0
+12 LE         SET1
+13 OE
+
+Row address decoder
+16 A0
+18 A1
+22 A2
+
+*/
+
+.program ws19695_main
+.side_set 1 opt
+
+; autopull disabled 
+; SHIFTCTRL_PULL_THRESH = 32
+
+; Data (pin 11 -> SDI) on OUT pin 0
+; Clock (pin 10 -> CLK) on side-set pin
+; Latch (pin 12 -> LE) on OUT pin 1
+
+    pull ifempty block       ; Read byte from TXFIFO filled by DMA
+    jmp pin bitloop          ; JMP PIN controls brightness using PWM
+    mov osr,null
+bitloop:
+    out pins,1        side 0 ; shift out 1 bit from OSR, CLK LOW
+    jmp !osre bitloop side 1 ; jmp if OSR not empty, CLK HIGH
+    set pins,0b110    side 0 ; OE + latch pulse start, CLK LOW
+    irq wait 4               ; Update row address
+    set pins,0b000 [7]       ; OE + latch pulse end
+    nop [7]                  ; Make sure OE is enabled long enough
+
+
+.program ws19695_row
+.side_set 1 opt
+
+; Simple 0 - 7 counter triggered by IRQ
+
+; A0 pin 16 -> side-set pin
+; A1 pin 18 -> SET pin 0
+; A2 pin 22 -> SET pin 4
+
+.wrap_target
+    wait 1 irq 4
+    set pins,0b00000  side 0 ; Set addr 0
+    wait 1 irq 4
+    set pins,0b00000  side 1 ; Set addr 1
+    wait 1 irq 4
+    set pins,0b00001  side 0 ; Set addr 2
+    wait 1 irq 4
+    set pins,0b00001  side 1 ; Set addr 3
+    wait 1 irq 4
+    set pins,0b10000  side 0 ; Set addr 4
+    wait 1 irq 4
+    set pins,0b10000  side 1 ; Set addr 5
+    wait 1 irq 4
+    set pins,0b10001  side 0 ; Set addr 6
+    wait 1 irq 4
+    set pins,0b10001  side 1 ; Set addr 7
+.wrap
+
+% c-sdk {
+
+#include "hardware/clocks.h"
+
+static PIO pio = pio0;
+static uint sm_main, sm_row;
+
+static uint PIN_CLK = 10;
+static uint PIN_SDI = 11;
+static uint PIN_LE  = 12;
+static uint PIN_OE  = 13;
+
+static uint PIN_PWM = 27;  // Brightness
+
+static uint PIN_A0  = 16;
+static uint PIN_A1  = 18;
+static uint PIN_A2  = 22;
+
+static uint32_t CLK_REQ_HZ  = 100 * 1000;	// Requested clock: 100 kHz
+
+static inline void ws19695_program_init() {
+    sm_main = pio_claim_unused_sm(pio, true);
+    sm_row = pio_claim_unused_sm(pio, true);
+
+    pio_gpio_init(pio, PIN_CLK);
+    pio_gpio_init(pio, PIN_SDI);
+    pio_gpio_init(pio, PIN_LE);
+    pio_gpio_init(pio, PIN_OE);
+
+    pio_gpio_init(pio, PIN_A0);
+    pio_gpio_init(pio, PIN_A1);
+    pio_gpio_init(pio, PIN_A2);
+
+
+	/* Set all pins to output */
+    pio_sm_set_consecutive_pindirs(pio, sm_main, PIN_CLK, 4, true);
+    pio_sm_set_consecutive_pindirs(pio, sm_row, PIN_A0, 1, true);
+    pio_sm_set_consecutive_pindirs(pio, sm_row, PIN_A1, 5, true);
+
+
+    uint offset_main = pio_add_program(pio, &ws19695_main_program);
+	pio_sm_config conf_main = ws19695_main_program_get_default_config(offset_main);
+
+    uint offset_row = pio_add_program(pio, &ws19695_row_program);
+    pio_sm_config conf_row = ws19695_row_program_get_default_config(offset_row);
+
+
+    sm_config_set_sideset_pins(&conf_main, PIN_CLK);
+    sm_config_set_out_pins(&conf_main, PIN_SDI, 1);
+    sm_config_set_set_pins(&conf_main, PIN_SDI, 3);
+    sm_config_set_jmp_pin(&conf_main, PIN_PWM);
+
+    sm_config_set_sideset_pins(&conf_row, PIN_A0);
+    sm_config_set_set_pins(&conf_row, PIN_A1, 5);
+
+    sm_config_set_fifo_join(&conf_main, PIO_FIFO_JOIN_TX);
+
+    /* shift left, disable autopull, out threshold 32 bits */
+	sm_config_set_out_shift(&conf_main, false, false, 32);
+
+	float clk_div = (float)clock_get_hz(clk_sys) / (CLK_REQ_HZ * 2);
+	sm_config_set_clkdiv(&conf_main, clk_div);
+
+	pio_sm_init(pio, sm_main, offset_main, &conf_main);
+
+	pio_sm_clear_fifos(pio, sm_main);
+	pio_sm_set_enabled(pio, sm_main, true);
+
+	pio_sm_init(pio, sm_row, offset_row, &conf_row);
+	pio_sm_set_enabled(pio, sm_row, true);
+}
+
+%}

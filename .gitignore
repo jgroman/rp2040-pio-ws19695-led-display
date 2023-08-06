@@ -1,3 +1,14 @@
+# Custom 
+
+# pico-sdk build folder
+build/
+
+# VSCode config
+.vscode/
+
+
+# Default GitHub C .gitignore
+
 # Prerequisites
 *.d
 
