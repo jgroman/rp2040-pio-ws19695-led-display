@@ -1,0 +1,35 @@
+{
+  "name": "pico-dev",
+  "build": {
+    "dockerfile": "../pico-dev.Dockerfile"
+  },
+  "runArgs": [
+    "--platform=linux/amd64",
+    // https://github.com/microsoft/vscode-remote-release/issues/1333
+    "--volume=${localWorkspaceFolder}:/workspaces/${localWorkspaceFolderBasename}:Z"
+    ],
+  "remoteUser": "root",
+  "containerUser": "vscode",
+  "workspaceMount": "",
+  "privileged": true,
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "extensions.verifySignature": false
+      },
+      "extensions": [
+        "mcu-debug.debug-tracker-vscode",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode.vscode-serial-monitor",
+        "maziac.asm-code-lens",
+        "ms-vscode.cmake-tools",
+        "mcu-debug.memory-view",
+        "mcu-debug.peripheral-viewer",
+        "mcu-debug.rtos-views",
+        "marus25.cortex-debug",
+        "cschlosser.doxdocgen"
+        ]
+    }
+  }
+}
