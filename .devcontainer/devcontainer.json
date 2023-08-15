@@ -1,12 +1,16 @@
 {
   "name": "pico-dev",
   "build": {
-    "dockerfile": "../pico-dev.Dockerfile"
+    "dockerfile": "./pico-dev.Dockerfile"
   },
   "runArgs": [
     "--platform=linux/amd64",
     // https://github.com/microsoft/vscode-remote-release/issues/1333
-    "--volume=${localWorkspaceFolder}:/workspaces/${localWorkspaceFolderBasename}:Z"
+    "--volume=${localWorkspaceFolder}:/workspaces/${localWorkspaceFolderBasename}:Z",
+    "--cap-add=SYS_PTRACE", 
+    "--security-opt", "seccomp=unconfined", 
+    "--device=/dev/bus/usb", 
+    "--device=/dev/ttyACM0"
     ],
   "remoteUser": "root",
   "containerUser": "vscode",
@@ -28,7 +32,8 @@
         "mcu-debug.peripheral-viewer",
         "mcu-debug.rtos-views",
         "marus25.cortex-debug",
-        "cschlosser.doxdocgen"
+        "cschlosser.doxdocgen",
+        "xaver.clang-format"
         ]
     }
   }

@@ -9,6 +9,7 @@ RUN apt-get install -y --no-install-recommends \
     autoconf \
     automake \
     build-essential \
+    clang-format \
     cmake \
     git \
     libftdi-dev \
@@ -55,6 +56,11 @@ RUN cd \
     && sudo make install \
     && cd ~/pico \
     && git clone https://github.com/raspberrypi/pico-examples.git --branch master --depth 1 --single-branch 
+
+RUN cd ~/pico \ 
+    && git clone https://github.com/wtarreau/bootterm.git --branch master --depth=1 --single-branch \
+    && cd bootterm \
+    && sudo make -j4 install 
 
 # Official ARM GNU toolchain has broken gdb, we will use using xpack release which has this fixed
 ARG ARM_TOOLCHAIN_ARCHIVE=xpack-arm-none-eabi-gcc-12.2.1-1.2-linux-x64.tar.gz
