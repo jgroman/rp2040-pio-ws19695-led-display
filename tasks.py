@@ -15,7 +15,7 @@ PROJECT_NAME = "pico-dev"
 @task
 def pico_dev_build(ctx):
     """Build image"""
-    ctx.run(f"docker build -f pico-dev.Dockerfile -t {PROJECT_NAME}:latest .")
+    ctx.run(f"docker build -f .devcontainer/pico-dev.Dockerfile -t {PROJECT_NAME}:latest .")
 
 @task
 def pico_dev_run(ctx):

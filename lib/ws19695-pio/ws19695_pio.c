@@ -1,6 +1,4 @@
-#include "ws19695_pio.h"
-
-#include <string.h>  /* memcpy */
+#include <stdio.h>
 
 #include "hardware/gpio.h"
 #include "hardware/dma.h"
@@ -8,7 +6,9 @@
 
 #include "ws19695.pio.h"  // Generated from ws19695.pio
 
-#define PIN_PWM 27
+#include "ws19695_pio.h"
+
+#define PIN_PWM 27   // PWM controlled display brightness
 
 /*
 LED display organization
@@ -113,12 +113,88 @@ void ws19695_pio_init()
 // Copy data into display DMA buffer
 void ws19695_pio_set_buffer(uint8_t *data)
 {
-    //memcpy(data, buf_ws19695, 32);
-
     // Skipping row 0 and first two bits of remaining rows to preserve LED bits
     for (uint8_t i = 1; i < 8; i++)
     {
         buf_ws19695[i] = buf_ws19695[i] & 0xC0000000 | data[4*i] << 22 | 
                         data[4*i+1] << 14 | data[4*i+2] << 6;
+    }
+}
+
+void ws19695_pio_set_led(uint8_t led_id, bool state)
+{
+    switch (led_id)
+    {
+
+    case WS19695_LED_MOVE_ON:
+        buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 30 | state << 31;
+        break;
+
+    case WS19695_LED_ALARM_ON:
+        buf_ws19695[1] = buf_ws19695[1] & 0x3FFFFFFF | state << 30 | state << 31;
+        break;
+
+    case WS19695_LED_COUNT_DOWN:
+        buf_ws19695[2] = buf_ws19695[2] & 0x3FFFFFFF | state << 30 | state << 31;
+        break;
+
+    case WS19695_LED_COUNT_UP:
+        buf_ws19695[5] = buf_ws19695[5] & 0x3FFFFFFF | state << 30 | state << 31;
+        break;
+
+    case WS19695_LED_DEG_F:
+        buf_ws19695[3] = buf_ws19695[3] & 0x3FFFFFFF | state << 31;
+        break;
+
+    case WS19695_LED_DEG_C:
+        buf_ws19695[3] = buf_ws19695[3] & 0x3FFFFFFF | state << 30;
+        break;
+
+    case WS19695_LED_AM:
+        buf_ws19695[4] = buf_ws19695[4] & 0x3FFFFFFF | state << 31;
+        break;
+
+    case WS19695_LED_PM:
+        buf_ws19695[4] = buf_ws19695[4] & 0x3FFFFFFF | state << 30;
+        break;
+
+    case WS19695_LED_HOURLY:
+        buf_ws19695[6] = buf_ws19695[6] & 0x3FFFFFFF | state << 30 | state << 31;
+        break;
+
+    case WS19695_LED_AUTOLIGHT:
+        buf_ws19695[7] = buf_ws19695[7] & 0x3FFFFFFF | state << 30 | state << 31;
+        break;
+
+    case WS19695_LED_DAY_MON:
+        buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 27 | state << 28;
+        break;
+
+    case WS19695_LED_DAY_TUE:
+        buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 24 | state << 25;
+        break;
+
+    case WS19695_LED_DAY_WED:
+        buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 21 | state << 22;
+        break;
+
+    case WS19695_LED_DAY_THU:
+        buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 18 | state << 19;
+        break;
+
+    case WS19695_LED_DAY_FRI:
+        buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 15 | state << 16;
+        break;
+
+    case WS19695_LED_DAY_SAT:
+        buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 12 | state << 13;
+        break;
+
+    case WS19695_LED_DAY_SUN:
+        buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 9 | state << 10;
+        break;
+
+    default:
+        break;
     }
 }
