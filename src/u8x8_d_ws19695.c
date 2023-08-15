@@ -1,12 +1,13 @@
-#include "u8x8_d_ws19695.h"
-
 #include <stdio.h>
 #include <string.h>  /* memset */
+
+#include "../lib/ws19695-pio/ws19695_pio.h"
+#include "u8x8_d_ws19695.h"
 
 #define W 8
 #define H 1
 
-uint32_t buf_ws19695[8] __attribute__ ((aligned(32)));
+//uint32_t buf_ws19695[8] __attribute__ ((aligned(32)));
 
 static uint8_t buf_transposed[32];
 
@@ -110,12 +111,13 @@ uint8_t u8x8_d_ws19695_22x7_pio(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void
         }
 
         // Copy buf_transposed to display DMA buffer
+        ws19695_pio_set_buffer(buf_transposed);
         // Skipping row 0 and first two bits of remaining rows to preserve LED bits
-        for (uint8_t i = 1; i < 8; i++)
-        {
-          buf_ws19695[i] = buf_ws19695[i] & 0xC0000000 | buf_transposed[4*i] << 22 | 
-                            buf_transposed[4*i+1] << 14 | buf_transposed[4*i+2] << 6;
-        }
+        // for (uint8_t i = 1; i < 8; i++)
+        // {
+        //   buf_ws19695[i] = buf_ws19695[i] & 0xC0000000 | buf_transposed[4*i] << 22 | 
+        //                     buf_transposed[4*i+1] << 14 | buf_transposed[4*i+2] << 6;
+        // }
       break;
     
     case U8X8_MSG_DISPLAY_REFRESH:

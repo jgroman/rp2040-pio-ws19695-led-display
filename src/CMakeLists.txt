@@ -4,9 +4,9 @@ add_executable(${PROJECT_NAME}
     u8x8_d_ws19695.c
 )
 
-pico_generate_pio_header(${PROJECT_NAME} 
-    ${CMAKE_CURRENT_LIST_DIR}/ws19695.pio
-)
+# pico_generate_pio_header(${PROJECT_NAME} 
+#     ${CMAKE_CURRENT_LIST_DIR}/ws19695.pio
+# )
 
 target_link_libraries(${PROJECT_NAME}
     pico_stdlib
@@ -14,6 +14,7 @@ target_link_libraries(${PROJECT_NAME}
     hardware_pio
     hardware_pwm
     hardware_dma
+    ws19695_pio
     u8g2
 )
 
