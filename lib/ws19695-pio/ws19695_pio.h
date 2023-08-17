@@ -60,6 +60,8 @@ void ws19695_pio_init();
 
 void ws19695_pio_set_buffer(uint8_t *data);
 
+void ws19695_pio_set_pixel(uint8_t x, uint8_t y, bool state);
+
 void ws19695_pio_set_led(uint8_t led_id, bool state);
 
 #endif /* #ifndef WS19695_PIO_H */

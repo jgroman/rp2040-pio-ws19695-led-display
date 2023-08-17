@@ -283,6 +283,13 @@ void ws19695_pio_set_buffer(uint8_t *data) {
   }
 }
 
+void ws19695_pio_set_pixel(uint8_t x, uint8_t y, bool state) {
+  if ((x > 22) || (y > 6))
+    return;
+
+  buf_ws19695[y+1] = buf_ws19695[y+1] & 0x3FFFFFFF | state << (29 - x);
+}
+
 void ws19695_pio_set_led(uint8_t led_id, bool state) {
   switch (led_id) {
 
