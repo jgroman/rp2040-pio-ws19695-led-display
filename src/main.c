@@ -8,12 +8,7 @@
 #include "hardware/gpio.h"
 #endif
 
-#include "../lib/u8g2/csrc/u8g2.h"
 #include "../lib/ws19695-pio/ws19695_pio.h"
-
-#include "u8x8_d_ws19695.h"
-
-u8g2_t u8g2;
 
 int main() {
   stdio_init_all();
@@ -35,8 +30,6 @@ int main() {
   gpio_put(PICO_DEFAULT_LED_PIN, 1);
 #endif
 
-  u8g2_Setup_ws19695_22x7_pio(&u8g2, U8G2_MIRROR_VERTICAL, ws19695_byte_cb,
-                              ws19695_gpio_and_delay_cb);
   u8g2_ClearDisplay(&u8g2);
 
   uint8_t h = u8g2_GetDisplayHeight(&u8g2);

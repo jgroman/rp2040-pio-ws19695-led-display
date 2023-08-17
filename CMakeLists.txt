@@ -6,16 +6,12 @@ set(PICO_BOARD pico_w)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
-# Prevent "region `FLASH' overflowed" build error when adding u8g2 fonts
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffunction-sections -fdata-sections -Wl,--gc-sections")
-
 include(pico_sdk_import.cmake)
 
 project(${PROJECT_NAME} C CXX ASM)
 
 pico_sdk_init()
 
-add_subdirectory(lib/u8g2)
 add_subdirectory(lib/ws19695-pio)
 
 add_subdirectory(src)
