@@ -15,7 +15,7 @@
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 
-#include "ws19695.pio.h" // Generated from ws19695.pio
+#include "ws19695.pio.h"   // Generated from ws19695.pio
 
 #include "ws19695_pio.h"
 
@@ -36,7 +36,7 @@ Row addr||     bits 31-24       ||  bits 23-16  ||   bits 15-8   || bits 7-0 ||
 /*******************************************************************************
  * Macros and #define Constants
  *******************************************************************************/
-#define PIN_PWM 27 // PWM controlled display brightness
+#define PIN_PWM 27   // PWM controlled display brightness
 
 /*******************************************************************************
  * Global variables
@@ -48,6 +48,7 @@ u8g2_t u8g2;
 /*******************************************************************************
  * Variables
  *******************************************************************************/
+// Display DMA buffer [8 * uint32_t]
 static uint32_t buf_ws19695[8] __attribute__((aligned(32)));
 static uint32_t p_buf_ws19695 = (uint32_t)(buf_ws19695);
 
@@ -117,9 +118,9 @@ static inline void ws19695_configure_dma() {
       dma_chan_control, &dma_cfg_control,
       // Writing to this register retriggers transfer channel
       &(dma_channel_hw_addr(dma_chan_transfer)->al3_read_addr_trig),
-      &p_buf_ws19695, // pointer to pointer to buf_ws19695
+      &p_buf_ws19695,   // pointer to pointer to buf_ws19695
       1,
-      true // initial DMA trigger
+      true   // initial DMA trigger
   );
 
   return;
@@ -127,9 +128,7 @@ static inline void ws19695_configure_dma() {
 
 #ifdef USE_U8G2
 /**
- * @brief Transpose bit matrix
- *
- * @par Description
+ * @brief Transpose bit matrix.
  *    Parameter A is the address of the first byte of an 8x8 submatrix of
  * the source matrix, which is of size 8m x 8n bits. Similarly, parameter B is
  * the address of the first byte of an 8x8 submatrix in the target matrix,
@@ -172,16 +171,38 @@ static void transpose8(unsigned char *A, uint8_t m, uint8_t n,
   B[7 * n] = y;
 }
 
+/**
+ * @brief Mandatory u8g2_SetupDisplay() callback function stub
+ *
+ * @param u8x8
+ * @param msg
+ * @param arg_int
+ * @param arg_ptr
+ * @return uint8_t
+ */
 static uint8_t ws19695_byte_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int,
-                        void *arg_ptr) {
-  return 1; // All operations are successful
+                               void *arg_ptr) {
+  return 1;   // All operations are successful
 }
 
-static uint8_t ws19695_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int,
-                                  void *arg_ptr) {
-  return 1; // All operations are successful
+/**
+ * @brief Mandatory u8g2_SetupDisplay() callback function stub
+ *
+ * @param u8x8
+ * @param msg
+ * @param arg_int
+ * @param arg_ptr
+ * @return uint8_t
+ */
+static uint8_t ws19695_gpio_and_delay_cb(u8x8_t *u8x8, uint8_t msg,
+                                         uint8_t arg_int, void *arg_ptr) {
+  return 1;   // All operations are successful
 }
 
+/**
+ * @brief Custom ws19695_pio display definition for u8g2
+ *
+ */
 static const u8x8_display_info_t u8x8_ws19695_22x7_pio_display_info = {
     /* chip_enable_level = */ 0,
     /* chip_disable_level = */ 1,
@@ -206,8 +227,8 @@ static const u8x8_display_info_t u8x8_ws19695_22x7_pio_display_info = {
     /* pixel_width = */ 22,
     /* pixel_height = */ 7};
 
-static uint8_t u8x8_d_ws19695_22x7_pio(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int,
-                                void *arg_ptr) {
+static uint8_t u8x8_d_ws19695_22x7_pio(u8x8_t *u8x8, uint8_t msg,
+                                       uint8_t arg_int, void *arg_ptr) {
   switch (msg) {
   case U8X8_MSG_DISPLAY_INIT:
     break;
@@ -249,9 +270,9 @@ static uint8_t u8x8_d_ws19695_22x7_pio(u8x8_t *u8x8, uint8_t msg, uint8_t arg_in
   return 1;
 }
 
-void u8g2_Setup_ws19695_22x7_pio(u8g2_t *u8g2, const u8g2_cb_t *rotation,
-                                 u8x8_msg_cb byte_cb,
-                                 u8x8_msg_cb gpio_and_delay_cb) {
+static void u8g2_Setup_ws19695_22x7_pio(u8g2_t *u8g2, const u8g2_cb_t *rotation,
+                                        u8x8_msg_cb byte_cb,
+                                        u8x8_msg_cb gpio_and_delay_cb) {
   uint8_t tile_buf_height;
   uint8_t *buf;
 
@@ -263,6 +284,13 @@ void u8g2_Setup_ws19695_22x7_pio(u8g2_t *u8g2, const u8g2_cb_t *rotation,
 }
 #endif
 
+/**
+ * @brief Initialize WS-19695 display
+ *
+ * Set up display buffer, brightness PWM control and DMA.
+ * Optionally also initialize u8g2 if enabled.
+ *
+ */
 void ws19695_pio_init() {
   ws19695_configure_pwm(PIN_PWM, false);
   ws19695_program_init();
@@ -274,22 +302,69 @@ void ws19695_pio_init() {
 #endif
 }
 
-// Copy data into display DMA buffer
-void ws19695_pio_set_buffer(uint8_t *data) {
-  // Skipping row 0 and first two bits of remaining rows to preserve LED bits
+/**
+ * @brief Directly copy data into display DMA buffer.
+ *   Status LED states bits are not affected.
+ *
+ * @param p_data Pointer to display data [32 bytes]
+ */
+void ws19695_pio_set_buffer(uint8_t *p_data) {
+  // Skipping row 0 and first two bits of remaining rows to preserve LED status
   for (uint8_t i = 1; i < 8; i++) {
-    buf_ws19695[i] = buf_ws19695[i] & 0xC0000000 | data[4 * i] << 22 |
-                     data[4 * i + 1] << 14 | data[4 * i + 2] << 6;
+    buf_ws19695[i] = buf_ws19695[i] & 0xC0000000 | p_data[4 * i] << 22 |
+                     p_data[4 * i + 1] << 14 | p_data[4 * i + 2] << 6;
   }
 }
 
-void ws19695_pio_set_pixel(uint8_t x, uint8_t y, bool state) {
-  if ((x > 22) || (y > 6))
-    return;
-
-  buf_ws19695[y+1] = buf_ws19695[y+1] & 0x3FFFFFFF | state << (29 - x);
+/**
+ * @brief Directly copy data from display DMA buffer including status LED state
+ *   bits
+ *
+ * @param p_data Pointer to receiving buffer [32 bytes]
+ */
+void ws19695_pio_get_buffer(uint8_t *p_data) {
+  for (uint8_t i = 0; i < 8; i++) {
+    p_data[4 * i] = (buf_ws19695[i] & 0xFF000000) > 24;
+    p_data[4 * i + 1] = (buf_ws19695[i] & 0x00FF0000) > 16;
+    p_data[4 * i + 2] = (buf_ws19695[i] & 0x0000FF00) > 8;
+    p_data[4 * i + 3] = 0;
+  }
 }
 
+/**
+ * @brief Set diplay pixel state
+ *
+ * @param x x-coordinate (0-21)
+ * @param y y-coordinate (0-6)
+ * @param state Requested state: true - pixel on, false - pixel off
+ */
+void ws19695_pio_set_pixel(uint8_t x, uint8_t y, bool state) {
+  if ((x > WS19695_DISPLAY_WIDTH - 1) || (y > WS19695_DISPLAY_HEIGHT - 1))
+    return;
+
+  buf_ws19695[y + 1] = buf_ws19695[y + 1] & 0x3FFFFFFF | state << (29 - x);
+}
+
+/**
+ * @brief Get display pixel state
+ *
+ * @param x x-coordinate (0-21)
+ * @param y y-coordinate (0-6)
+ * @return bool Pixel state: true - on, false - off
+ */
+bool ws19695_pio_get_pixel(uint8_t x, uint8_t y) {
+  if ((x > WS19695_DISPLAY_WIDTH - 1) || (y > WS19695_DISPLAY_HEIGHT - 1))
+    return false;
+
+  return (buf_ws19695[y + 1] & (1 << (29 - x))) >> (29 - x);
+}
+
+/**
+ * @brief Set status LED state
+ *
+ * @param led_id LED id (see ws19695_pio.h)
+ * @param state Requested state: true - LED on, false - LED off
+ */
 void ws19695_pio_set_led(uint8_t led_id, bool state) {
   switch (led_id) {
 
@@ -334,34 +409,99 @@ void ws19695_pio_set_led(uint8_t led_id, bool state) {
     break;
 
   case WS19695_LED_DAY_MON:
-    buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 27 | state << 28;
+    buf_ws19695[0] = buf_ws19695[0] & 0xE7FFFFFF | state << 27 | state << 28;
     break;
 
   case WS19695_LED_DAY_TUE:
-    buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 24 | state << 25;
+    buf_ws19695[0] = buf_ws19695[0] & 0xFCFFFFFF | state << 24 | state << 25;
     break;
 
   case WS19695_LED_DAY_WED:
-    buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 21 | state << 22;
+    buf_ws19695[0] = buf_ws19695[0] & 0xFF9FFFFF | state << 21 | state << 22;
     break;
 
   case WS19695_LED_DAY_THU:
-    buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 18 | state << 19;
+    buf_ws19695[0] = buf_ws19695[0] & 0xFFF3FFFF | state << 18 | state << 19;
     break;
 
   case WS19695_LED_DAY_FRI:
-    buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 15 | state << 16;
+    buf_ws19695[0] = buf_ws19695[0] & 0xFFFE7FFF | state << 15 | state << 16;
     break;
 
   case WS19695_LED_DAY_SAT:
-    buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 12 | state << 13;
+    buf_ws19695[0] = buf_ws19695[0] & 0xFFFFCFFF | state << 12 | state << 13;
     break;
 
   case WS19695_LED_DAY_SUN:
-    buf_ws19695[0] = buf_ws19695[0] & 0x3FFFFFFF | state << 9 | state << 10;
+    buf_ws19695[0] = buf_ws19695[0] & 0xFFFFF9FF | state << 9 | state << 10;
     break;
 
   default:
     break;
+  }
+}
+
+/**
+ * @brief Get status LED state
+ *
+ * @param led_id LED id (see ws19695_pio.h)
+ * @return bool LED state: true - on, false - off
+ */
+bool ws19695_pio_get_led(uint8_t led_id) {
+  switch (led_id) {
+
+  case WS19695_LED_MOVE_ON:
+    return (buf_ws19695[0] & 0xC0000000) != 0;
+
+  case WS19695_LED_ALARM_ON:
+    return (buf_ws19695[1] & 0xC0000000) != 0;
+
+  case WS19695_LED_COUNT_DOWN:
+    return (buf_ws19695[2] & 0xC0000000) != 0;
+
+  case WS19695_LED_COUNT_UP:
+    return (buf_ws19695[5] & 0xC0000000) != 0;
+
+  case WS19695_LED_DEG_F:
+    return (buf_ws19695[3] & 0x80000000) != 0;
+
+  case WS19695_LED_DEG_C:
+    return (buf_ws19695[3] & 0x40000000) != 0;
+
+  case WS19695_LED_AM:
+    return (buf_ws19695[4] & 0x80000000) != 0;
+
+  case WS19695_LED_PM:
+    return (buf_ws19695[4] & 0x40000000) != 0;
+
+  case WS19695_LED_HOURLY:
+    return (buf_ws19695[6] & 0xC0000000) != 0;
+
+  case WS19695_LED_AUTOLIGHT:
+    return (buf_ws19695[7] & 0xC0000000) != 0;
+
+  case WS19695_LED_DAY_MON:
+    return (buf_ws19695[0] & 0x18000000) != 0;
+
+  case WS19695_LED_DAY_TUE:
+    return (buf_ws19695[0] & 0x03000000) != 0;
+
+  case WS19695_LED_DAY_WED:
+    return (buf_ws19695[0] & 0x00600000) != 0;
+
+  case WS19695_LED_DAY_THU:
+    return (buf_ws19695[0] & 0x000C0000) != 0;
+
+  case WS19695_LED_DAY_FRI:
+    return (buf_ws19695[0] & 0x00018000) != 0;
+
+  case WS19695_LED_DAY_SAT:
+    return (buf_ws19695[0] & 0x00003000) != 0;
+
+  case WS19695_LED_DAY_SUN:
+    return (buf_ws19695[0] & 0x00000600) != 0;
+
+  default:
+    return false;
   }
 }
